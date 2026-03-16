@@ -12,7 +12,7 @@ type RegisterFormProps = {
   onBack: () => void;
 };
 
-type Department = 'Admission Office' | 'Accounting Office' | 'Cashier' | 'Registrar' | 'Student Affairs';
+type Department = 'Admission Office' | 'Accounting Office' | 'Registrar' | 'Student Affairs Office' | 'Clinic';
 
 export default function RegisterForm({ role, onRegister, onBack }: RegisterFormProps) {
   const [toast, setToast] = useState<string | null>(null);
@@ -23,7 +23,9 @@ export default function RegisterForm({ role, onRegister, onBack }: RegisterFormP
   const [studentData, setStudentData] = useState({
     fullName: '',
     studentId: '',
-    programYear: '',
+    program: '',
+    yearLevel: '',
+    section: '',
     email: '',
     password: '',
     confirmPassword: ''
@@ -33,7 +35,6 @@ export default function RegisterForm({ role, onRegister, onBack }: RegisterFormP
     firstName: '',
     lastName: '',
     email: '',
-    employeeId: '',
     department: '' as Department | '',
     jobTitle: '',
     password: '',
@@ -77,7 +78,9 @@ export default function RegisterForm({ role, onRegister, onBack }: RegisterFormP
       } else if (!/^\d{4}-\d{2}-\d{5}$/.test(studentData.studentId)) {
         newErrors.studentId = "Format: YYYY-MM-NNNNN (e.g. 2023-07-00126)";
       }
-      if (!studentData.programYear.trim()) newErrors.programYear = "Required";
+      if (!studentData.program.trim()) newErrors.program = "Required";
+      if (!studentData.yearLevel) newErrors.yearLevel = "Required";
+      if (!studentData.section.trim()) newErrors.section = "Required";
       if (!studentData.email.trim()) {
         newErrors.email = "Required";
       } else if (!studentData.email.includes('@')) {
@@ -98,9 +101,6 @@ export default function RegisterForm({ role, onRegister, onBack }: RegisterFormP
         newErrors.email = "Required";
       } else if (!adminData.email.includes('@')) {
         newErrors.email = "Invalid email format";
-      }
-      if (!adminData.employeeId.trim()) {
-        newErrors.employeeId = "Required";
       }
       if (!adminData.department) newErrors.department = "Select a department";
       if (!adminData.jobTitle.trim()) newErrors.jobTitle = "Required";
@@ -127,24 +127,11 @@ export default function RegisterForm({ role, onRegister, onBack }: RegisterFormP
 
     try {
       if (role === 'student') {
-        await onRegister({
-          fullName: studentData.fullName,
-          studentId: studentData.studentId,
-          program: studentData.programYear, // mapping programYear to program
-          yearSection: '', // default empty as not in form yet
-          email: studentData.email,
-          password: studentData.password
-        });
+        const { confirmPassword, ...registerData } = studentData;
+        await onRegister(registerData);
       } else {
-        await onRegister({
-          firstName: adminData.firstName,
-          lastName: adminData.lastName,
-          email: adminData.email,
-          employeeId: adminData.employeeId,
-          department: adminData.department,
-          jobTitle: adminData.jobTitle,
-          password: adminData.password
-        });
+        const { confirmPassword, ...registerData } = adminData;
+        await onRegister(registerData);
       }
       
       const successMsg = role === 'admin' 
@@ -218,19 +205,6 @@ export default function RegisterForm({ role, onRegister, onBack }: RegisterFormP
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-[#9ca3af] mb-1">Employee ID</label>
-                <input 
-                  type="text"
-                  value={adminData.employeeId}
-                  onChange={(e) => setAdminData({...adminData, employeeId: e.target.value})}
-                  placeholder="e.g. EMP-2025-001 or any assigned ID"
-                  disabled={loading}
-                  className={`w-full bg-[#0f1117] border ${errors.employeeId ? 'border-red-400' : 'border-[#2a2d3a]'} rounded-lg px-4 py-2 text-white placeholder-[#4b5563] focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50`}
-                />
-                {errors.employeeId && <p className="text-red-400 text-xs mt-1">{errors.employeeId}</p>}
-              </div>
-
-              <div>
                 <label className="block text-sm font-medium text-[#9ca3af] mb-1">Department</label>
                 <div className="relative">
                   <select 
@@ -242,9 +216,9 @@ export default function RegisterForm({ role, onRegister, onBack }: RegisterFormP
                     <option value="" disabled>Select your department...</option>
                     <option value="Admission Office">Admission Office</option>
                     <option value="Accounting Office">Accounting Office</option>
-                    <option value="Cashier">Cashier</option>
                     <option value="Registrar">Registrar</option>
-                    <option value="Student Affairs">Student Affairs</option>
+                    <option value="Student Affairs Office">Student Affairs Office</option>
+                    <option value="Clinic">Clinic</option>
                   </select>
                   <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
                     <svg className="w-4 h-4 text-[#9ca3af]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -387,17 +361,53 @@ export default function RegisterForm({ role, onRegister, onBack }: RegisterFormP
             {errors.studentId && <p className="text-red-400 text-xs mt-1">{errors.studentId}</p>}
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-[#9ca3af] mb-1">Program & Year</label>
-            <input 
-              value={studentData.programYear}
-              onChange={(e) => setStudentData({...studentData, programYear: e.target.value})}
-              type="text" 
-              placeholder="BSCS - 3rd Year" 
-              disabled={loading}
-              className={`w-full bg-[#0f1117] border ${errors.programYear ? 'border-red-400' : 'border-[#2a2d3a]'} rounded-lg px-4 py-2 text-white placeholder-[#4b5563] focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50`}
-            />
-            {errors.programYear && <p className="text-red-400 text-xs mt-1">{errors.programYear}</p>}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="md:col-span-1">
+              <label className="block text-sm font-medium text-[#9ca3af] mb-1">Program</label>
+              <input 
+                value={studentData.program}
+                onChange={(e) => setStudentData({...studentData, program: e.target.value})}
+                type="text" 
+                placeholder="e.g. BSIT" 
+                disabled={loading}
+                className={`w-full bg-[#0f1117] border ${errors.program ? 'border-red-400' : 'border-[#2a2d3a]'} rounded-lg px-4 py-2 text-white placeholder-[#4b5563] focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50`}
+              />
+              {errors.program && <p className="text-red-400 text-xs mt-1">{errors.program}</p>}
+            </div>
+
+            <div className="md:col-span-1 grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm font-medium text-[#9ca3af] mb-1">Year Level</label>
+                <select
+                  value={studentData.yearLevel}
+                  onChange={(e) => setStudentData({...studentData, yearLevel: e.target.value})}
+                  disabled={loading}
+                  className={`w-full bg-[#0f1117] border ${errors.yearLevel ? 'border-red-400' : 'border-[#2a2d3a]'} rounded-lg px-3 py-2 text-white placeholder-[#4b5563] focus:outline-none focus:ring-2 focus:ring-indigo-500 appearance-none disabled:opacity-50`}
+                >
+                  <option value="">Year...</option>
+                  <option value="1">1st Year</option>
+                  <option value="2">2nd Year</option>
+                  <option value="3">3rd Year</option>
+                  <option value="4">4th Year</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-[#9ca3af] mb-1">Section</label>
+                <input 
+                  value={studentData.section}
+                  onChange={(e) => setStudentData({...studentData, section: e.target.value})}
+                  type="text" 
+                  placeholder="e.g. A" 
+                  disabled={loading}
+                  className={`w-full bg-[#0f1117] border ${errors.section ? 'border-red-400' : 'border-[#2a2d3a]'} rounded-lg px-3 py-2 text-white placeholder-[#4b5563] focus:outline-none focus:ring-2 focus:ring-indigo-500 text-center disabled:opacity-50`}
+                />
+              </div>
+            </div>
+            {(errors.yearLevel || errors.section) && (
+              <div className="md:col-span-2">
+                <p className="text-red-400 text-xs">{errors.yearLevel || errors.section}</p>
+              </div>
+            )}
           </div>
 
           <div>

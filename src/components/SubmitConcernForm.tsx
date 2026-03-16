@@ -1,5 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { CloudArrowUpIcon, CheckCircleIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
+import { 
+  CloudArrowUpIcon, 
+  CheckCircleIcon, 
+  ExclamationTriangleIcon,
+  AcademicCapIcon,
+  BanknotesIcon,
+  UserGroupIcon
+} from '@heroicons/react/24/outline';
 import { useConcerns } from '../hooks/useConcerns';
 import type { ConcernCategory } from '../hooks/useConcerns';
 import type { CurrentUser } from '../hooks/useAuth';
@@ -14,6 +21,7 @@ export default function SubmitConcernForm({ user }: SubmitConcernFormProps) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState<ConcernCategory | ''>('');
+  const [subCategory, setSubCategory] = useState('');
   const [isAnonymous, setIsAnonymous] = useState(false);
   const [email, setEmail] = useState(user.email);
   const [successId, setSuccessId] = useState<string | null>(null);
@@ -45,6 +53,7 @@ export default function SubmitConcernForm({ user }: SubmitConcernFormProps) {
       setTitle(draft.title || '');
       setDescription(draft.description || '');
       setCategory(draft.category || '');
+      setSubCategory(draft.subCategory || '');
       setIsAnonymous(draft.isAnonymous || false);
       setEmail(draft.email || user.email);
       setFileUrl(draft.fileUrl || null);
@@ -58,7 +67,7 @@ export default function SubmitConcernForm({ user }: SubmitConcernFormProps) {
   };
 
   const handleSaveDraft = () => {
-    const draft = { title, description, category, isAnonymous, email, fileUrl };
+    const draft = { title, description, category, subCategory, isAnonymous, email, fileUrl };
     localStorage.setItem('concerntrack_draft', JSON.stringify(draft));
     setDraftSaved(true);
     setTimeout(() => setDraftSaved(false), 2000);
@@ -86,6 +95,7 @@ export default function SubmitConcernForm({ user }: SubmitConcernFormProps) {
         title,
         description,
         category: category as ConcernCategory,
+        subCategory: subCategory || undefined,
         isAnonymous,
         studentId: user.id,
         studentName: user.fullName,
@@ -100,6 +110,7 @@ export default function SubmitConcernForm({ user }: SubmitConcernFormProps) {
       setTitle('');
       setDescription('');
       setCategory('');
+      setSubCategory('');
       setIsAnonymous(false);
       setEmail(user.email);
       setFileUrl(null);
@@ -107,6 +118,30 @@ export default function SubmitConcernForm({ user }: SubmitConcernFormProps) {
     } catch (err) {
       console.error('Submission failed:', err);
     }
+  };
+
+  const subCategories: Record<string, string[]> = {
+    Academic: [
+      "Grade Appeal", "Section Transfer", "Subject Conflict", "Enrollment Issue", 
+      "TOR / Records Request", "Missing Grade", "Curriculum / Prerequisite Issue", 
+      "Teacher Concern", "Other Academic Concern"
+    ],
+    Financial: [
+      "Tuition Fee Dispute", "Scholarship / Grant Issue", "Payment Not Credited", 
+      "Refund Request", "Miscellaneous Fee Concern", "Receipt / OR Issue", 
+      "Other Financial Concern"
+    ],
+    Welfare: [
+      "Mental Health Support", "Bullying / Harassment", "Physical Safety Concern", 
+      "Discrimination", "Medical / Health Issue", "Personal Crisis", 
+      "Unsafe Environment", "Other Welfare Concern"
+    ]
+  };
+
+  const routingInfo: Record<string, string> = {
+    Academic: "Registrar / Department Head",
+    Financial: "Finance Office / Cashier",
+    Welfare: "Student Affairs Office"
   };
 
   return (
@@ -173,16 +208,51 @@ export default function SubmitConcernForm({ user }: SubmitConcernFormProps) {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-sm font-medium text-[#9ca3af] mb-1">Program & year</label>
-              <input 
-                type="text" 
-                value={user.program || 'N/A'}
-                readOnly
-                className="w-full bg-[#0f1117] border border-[#2a2d3a] rounded-lg px-4 py-2.5 text-white opacity-60 cursor-not-allowed"
-              />
+                    {/* Reading Student Info from Profile */}
+            <div className={`grid grid-cols-1 md:grid-cols-3 gap-4 p-5 border rounded-xl mb-6 transition-all duration-300 ${isAnonymous ? 'bg-indigo-500/5 border-indigo-500/10 opacity-70' : 'bg-[#0f1117] border-[#2a2d3a]'}`}>
+              <div className="md:col-span-1">
+                <label className="block text-[10px] font-bold text-gray-600 uppercase tracking-widest mb-1.5">Full Name</label>
+                <div className="text-white font-medium bg-[#1a1d27]/50 px-3 py-2 rounded-lg border border-[#2a2d3a]/50 text-sm">
+                  {isAnonymous ? 'ANONYMOUS' : user.fullName}
+                </div>
+              </div>
+              <div className="md:col-span-1">
+                <label className="block text-[10px] font-bold text-gray-600 uppercase tracking-widest mb-1.5">Student ID</label>
+                <div className="text-white font-medium bg-[#1a1d27]/50 px-3 py-2 rounded-lg border border-[#2a2d3a]/50 text-sm">
+                  {isAnonymous ? 'HIDDEN' : user.studentId}
+                </div>
+              </div>
+              <div className="md:col-span-1">
+                <label className="block text-[10px] font-bold text-gray-600 uppercase tracking-widest mb-1.5">Email</label>
+                <div className="text-white font-medium bg-[#1a1d27]/50 px-3 py-2 rounded-lg border border-[#2a2d3a]/50 text-sm truncate">
+                  {isAnonymous ? 'MASKED' : user.email}
+                </div>
+              </div>
+              <div className="md:col-span-1">
+                <label className="block text-[10px] font-bold text-gray-600 uppercase tracking-widest mb-1.5">Program</label>
+                <div className="text-white font-medium bg-[#1a1d27]/50 px-3 py-2 rounded-lg border border-[#2a2d3a]/50 text-sm">
+                  {isAnonymous ? '---' : user.program}
+                </div>
+              </div>
+              <div className="md:col-span-1">
+                <label className="block text-[10px] font-bold text-gray-600 uppercase tracking-widest mb-1.5">Year Level</label>
+                <div className="text-white font-medium bg-[#1a1d27]/50 px-3 py-2 rounded-lg border border-[#2a2d3a]/50 text-sm">
+                  {isAnonymous ? '---' : (user.yearLevel ? `${user.yearLevel}${user.yearLevel === '1' ? 'st' : user.yearLevel === '2' ? 'nd' : user.yearLevel === '3' ? 'rd' : 'th'} Year` : 'N/A')}
+                </div>
+              </div>
+              <div className="md:col-span-1">
+                <label className="block text-[10px] font-bold text-gray-600 uppercase tracking-widest mb-1.5">Section</label>
+                <div className="text-white font-medium bg-[#1a1d27]/50 px-3 py-2 rounded-lg border border-[#2a2d3a]/50 text-sm">
+                  {isAnonymous ? '---' : (user.section || 'N/A')}
+                </div>
+              </div>
+              {isAnonymous && (
+                <div className="md:col-span-3 mt-2">
+                  <p className="text-[10px] text-indigo-400 font-medium italic">✨ Your identity will be hidden from the department staff. Admin retains a record for audit only.</p>
+                </div>
+              )}
             </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label className="block text-sm font-medium text-[#9ca3af] mb-1">Email address</label>
               <input 
@@ -196,21 +266,81 @@ export default function SubmitConcernForm({ user }: SubmitConcernFormProps) {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="space-y-6">
             <div>
-              <label className="block text-sm font-medium text-[#9ca3af] mb-1">Category</label>
-              <select 
-                value={category}
-                onChange={(e) => setCategory(e.target.value as ConcernCategory)}
-                className={`w-full bg-[#0f1117] border ${errors.category ? 'border-red-500' : 'border-[#2a2d3a]'} rounded-lg px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors appearance-none`}
-              >
-                <option value="" disabled>Select category...</option>
-                <option value="Academic">Academic</option>
-                <option value="Financial">Financial</option>
-                <option value="Welfare">Welfare / Facilities</option>
-              </select>
+              <label className="block text-sm font-medium text-[#9ca3af] mb-4">Category</label>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* Academic Card */}
+                <div 
+                  onClick={() => { setCategory('Academic'); setSubCategory(''); }}
+                  className={`bg-[#1a1d27] border rounded-xl p-4 cursor-pointer transition-all ${category === 'Academic' ? 'border-indigo-500 bg-indigo-500/10' : 'border-[#2a2d3a] hover:border-[#4b5563]'}`}
+                >
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center">
+                      <AcademicCapIcon className="w-5 h-5 text-blue-400" />
+                    </div>
+                    <span className="font-bold text-white">Academic</span>
+                  </div>
+                  <p className="text-[11px] text-[#9ca3af] leading-tight">Concerns about grades, sections, subjects, enrollment, records, and teacher issues.</p>
+                </div>
+
+                {/* Financial Card */}
+                <div 
+                  onClick={() => { setCategory('Financial'); setSubCategory(''); }}
+                  className={`bg-[#1a1d27] border rounded-xl p-4 cursor-pointer transition-all ${category === 'Financial' ? 'border-indigo-500 bg-indigo-500/10' : 'border-[#2a2d3a] hover:border-[#4b5563]'}`}
+                >
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center">
+                      <BanknotesIcon className="w-5 h-5 text-green-400" />
+                    </div>
+                    <span className="font-bold text-white">Financial</span>
+                  </div>
+                  <p className="text-[11px] text-[#9ca3af] leading-tight">Concerns about tuition fees, scholarships, payments, refunds, and receipts.</p>
+                </div>
+
+                {/* Welfare Card */}
+                <div 
+                  onClick={() => { setCategory('Welfare'); setSubCategory(''); }}
+                  className={`bg-[#1a1d27] border rounded-xl p-4 cursor-pointer transition-all ${category === 'Welfare' ? 'border-indigo-500 bg-indigo-500/10' : 'border-[#2a2d3a] hover:border-[#4b5563]'}`}
+                >
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="w-8 h-8 rounded-full bg-amber-500/20 flex items-center justify-center">
+                      <UserGroupIcon className="w-5 h-5 text-amber-400" />
+                    </div>
+                    <span className="font-bold text-white">Welfare</span>
+                  </div>
+                  <p className="text-[11px] text-[#9ca3af] leading-tight">Concerns about mental health, bullying, harassment, safety, and student well-being.</p>
+                </div>
+              </div>
+              
+              {category && (
+                <p className="text-xs text-[#9ca3af] mt-3">
+                  → Will be routed to: <span className="text-indigo-400 font-medium">
+                    {category === 'Welfare' && subCategory === 'Medical / Health Issue' 
+                      ? 'Clinic' 
+                      : routingInfo[category]}
+                  </span>
+                </p>
+              )}
               {errors.category && <p className="text-red-500 text-xs mt-1">{errors.category}</p>}
             </div>
+
+            {category && (
+              <div className="animate-in fade-in duration-200">
+                <label className="block text-sm font-medium text-[#9ca3af] mb-1">Specific concern type (optional)</label>
+                <select 
+                  value={subCategory}
+                  onChange={(e) => setSubCategory(e.target.value)}
+                  className="w-full bg-[#0f1117] border border-[#2a2d3a] rounded-lg px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors appearance-none"
+                >
+                  <option value="">Select specific type...</option>
+                  {subCategories[category].map(sub => (
+                    <option key={sub} value={sub}>{sub}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
             <div>
               <label className="block text-sm font-medium text-[#9ca3af] mb-1">Concern title</label>
               <input 
@@ -243,9 +373,15 @@ export default function SubmitConcernForm({ user }: SubmitConcernFormProps) {
 
           <div>
             <label className="block text-sm font-medium text-[#9ca3af] mb-1">Attachments (optional)</label>
-            <div className="w-full md:w-2/3 border-2 border-dashed border-[#2a2d3a] rounded-xl px-4 py-8 flex flex-col items-center justify-center bg-[#0f1117]/50 hover:bg-[#0f1117] transition-colors cursor-not-allowed group">
-              <CloudArrowUpIcon className="w-8 h-8 text-[#4b5563] group-hover:text-indigo-400 mb-2 transition-colors" />
-              <span className="text-sm text-[#4b5563] font-medium italic">Upload coming soon</span>
+            <div className="w-full md:w-2/3 border-2 border-dashed border-[#2a2d3a] rounded-2xl px-6 py-10 flex flex-col items-center justify-center bg-gradient-to-b from-[#0f1117] to-[#1a1d27] hover:from-[#1a1d27] hover:to-[#1e212e] transition-all cursor-not-allowed group relative overflow-hidden">
+              <div className="absolute inset-0 bg-indigo-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+              <div className="relative z-10 flex flex-col items-center">
+                <div className="w-12 h-12 bg-[#2a2d3a] rounded-full flex items-center justify-center mb-4 group-hover:scale-110 group-hover:bg-indigo-500/20 transition-all duration-300">
+                  <CloudArrowUpIcon className="w-6 h-6 text-[#6b7280] group-hover:text-indigo-400 transition-colors" />
+                </div>
+                <span className="text-sm text-white font-bold tracking-tight">File Upload Support</span>
+                <span className="text-[10px] text-[#4b5563] font-medium uppercase tracking-[0.2em] mt-1">Coming Season 2</span>
+              </div>
             </div>
           </div>
 

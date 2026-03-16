@@ -99,16 +99,21 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Filtered Concerns
-  const filteredConcerns = concerns
+  // Filter concerns by department if user is a standard admin
+  const deptConcerns = user.role === 'superadmin' 
+    ? concerns 
+    : concerns.filter(c => c.department === user.department);
+
+  // Filtered Concerns (for display)
+  const filteredConcerns = deptConcerns
     .filter(c => searchTerm === '' || c.title.toLowerCase().includes(searchTerm.toLowerCase()) || c.concern_number.toLowerCase().includes(searchTerm.toLowerCase()))
     .filter(c => selectedCategory === 'All' || c.category === selectedCategory)
     .filter(c => activeStatus === 'All' || c.status === activeStatus);
 
-  // Metrics
-  const totalConcerns = concerns.length;
-  const resolved = concerns.filter(c => c.status === 'Resolved').length;
-  const escalated = concerns.filter(c => c.status === 'Escalated').length;
+  // Metrics (based on department concerns)
+  const totalConcerns = deptConcerns.length;
+  const resolved = deptConcerns.filter(c => c.status === 'Resolved').length;
+  const escalated = deptConcerns.filter(c => c.status === 'Escalated').length;
   
   const resolvedConcerns = concerns.filter(c => c.status === 'Resolved');
   const avgDays = resolvedConcerns.length > 0
@@ -153,7 +158,7 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
   // Export CSV
   const exportCSV = () => {
     setExportLoading(true);
-    const csvData = concerns.map(c => ({
+    const csvData = filteredConcerns.map(c => ({
       'Concern ID': c.concern_number,
       'Title': c.title,
       'Category': c.category,

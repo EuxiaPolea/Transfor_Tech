@@ -19,6 +19,7 @@ export interface Concern {
   title: string
   description: string
   category: ConcernCategory
+  sub_category?: string
   department: string
   status: ConcernStatus
   is_anonymous: boolean
@@ -36,13 +37,14 @@ export interface Concern {
 
 const departmentRouting: Record<ConcernCategory, string> = {
   Academic: 'Registrar',
-  Financial: 'Finance Office',
+  Financial: 'Accounting Office',
   Welfare: 'Student Affairs Office'
 }
 
 const generateConcernNumber = () => {
-  const num = Math.floor(1000 + Math.random() * 9000)
-  return `CON-${num}`
+  const year = new Date().getFullYear()
+  const random = Math.floor(100 + Math.random() * 900)
+  return `CON-${year}-${random}`
 }
 
 export function useConcerns() {
@@ -50,7 +52,7 @@ export function useConcerns() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const fetchConcerns = async () => {
+  const fetchConcerns = async (): Promise<Concern[]> => {
     setLoading(true)
     setError(null)
     try {
@@ -59,9 +61,33 @@ export function useConcerns() {
         .select('*')
         .order('submitted_at', { ascending: false })
       if (error) throw error
-      setConcerns(data || [])
-    } catch (err: any) {
-      setError(err.message)
+      const result = data || []
+      setConcerns(result)
+      return result
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to fetch concerns';
+      setError(msg)
+      return []
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const fetchMyConcerns = async (email: string): Promise<Concern[]> => {
+    setLoading(true)
+    setError(null)
+    try {
+      const { data, error } = await supabase
+        .from('concerns')
+        .select('*')
+        .eq('email', email)
+        .order('submitted_at', { ascending: false })
+      if (error) throw error
+      return data || []
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to fetch your concerns';
+      setError(msg)
+      return []
     } finally {
       setLoading(false)
     }
@@ -81,6 +107,7 @@ export function useConcerns() {
     title: string
     description: string
     category: ConcernCategory
+    subCategory?: string
     isAnonymous: boolean
     studentId: string
     studentName: string
@@ -93,7 +120,25 @@ export function useConcerns() {
     setError(null)
     try {
       const concernNumber = generateConcernNumber()
-      const routedTo = departmentRouting[formData.category]
+      let routedTo = departmentRouting[formData.category]
+      
+      // Precise routing logic based on sub-categories
+      if (formData.subCategory === 'Medical / Health Issue') {
+        routedTo = 'Clinic'
+      } else if (
+        formData.subCategory === 'Receipt / OR Issue' || 
+        formData.subCategory === 'Payment Not Credited'
+      ) {
+        routedTo = 'Accounting Office'
+      } else if (
+        formData.subCategory === 'Enrollment Issue' ||
+        formData.subCategory === 'TOR / Records Request'
+      ) {
+        // These can potentially go to Admission Office if they handle initial entry,
+        // but Registrar is usually safer. Let's stick with Registrar as per challenge.
+        routedTo = 'Registrar'
+      }
+
       const now = new Date().toISOString()
 
       const { data: concern, error: concernError } = await supabase
@@ -103,6 +148,7 @@ export function useConcerns() {
           title: formData.title,
           description: formData.description,
           category: formData.category,
+          sub_category: formData.subCategory || null,
           department: routedTo,
           status: 'Submitted',
           is_anonymous: formData.isAnonymous,
@@ -166,8 +212,9 @@ export function useConcerns() {
 
       // Refresh concerns list
       await fetchConcerns()
-    } catch (err: any) {
-      setError(err.message)
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to update concern status';
+      setError(msg)
       throw err
     } finally {
       setLoading(false)
@@ -191,7 +238,7 @@ export function useConcerns() {
 
   return {
     concerns, loading, error,
-    fetchConcerns, fetchConcernById,
+    fetchConcerns, fetchMyConcerns, fetchConcernById,
     submitConcern, updateConcernStatus, addAuditNote
   }
 }

@@ -48,9 +48,10 @@ export default function SuperAdminDashboard({ user, onLogout, onSettings }: Supe
         setPendingStaff(data.filter(s => !s.is_approved));
         setAllStaff(data);
       }
-    } catch (err: any) {
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to fetch staff accounts';
       console.error('Error fetching staff:', err);
-      setError(err.message || 'Failed to fetch staff accounts. This is usually due to missing database permissions (RLS).');
+      setError(msg);
     } finally {
       setLoading(false);
     }

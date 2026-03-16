@@ -12,12 +12,19 @@ export interface CurrentUser {
   fullName: string
   studentId?: string
   program?: string
-  yearSection?: string
+  yearLevel?: string
+  section?: string
   department?: string
   jobTitle?: string
   employeeId?: string
   isApproved?: boolean
 }
+
+const generateEmployeeId = () => {
+  const year = new Date().getFullYear();
+  const random = String(Math.floor(Math.random() * 999) + 1).padStart(3, '0');
+  return `EMP-${year}-${random}`;
+};
 
 // Role is determined from the database `role` column, not a hardcoded email
 
@@ -55,7 +62,8 @@ export function useAuth() {
         fullName: profile.full_name,
         studentId: profile.student_id,
         program: profile.program,
-        yearSection: profile.year_section,
+        yearLevel: profile.year_level,
+        section: profile.section,
       })
       setLoading(false)
       return
@@ -118,8 +126,8 @@ export function useAuth() {
       await supabase.auth.signOut();
       
       const errorMessage = profileError.code === 'PGRST116' 
-        ? 'Your account profile was not found in the database. Registration might have failed.' 
-        : `Database Error (${profileError.code}): ${profileError.message}. This is likely a permission issue (RLS).`;
+        ? 'Your account profile was not found in the database.' 
+        : `Database Error (${profileError.code}): ${profileError.message}.`;
         
       throw new Error(errorMessage);
     }
@@ -127,15 +135,13 @@ export function useAuth() {
     // Superadmins skip approval check
     if (staffProfile?.role === 'superadmin') return
 
-    if (!staffProfile?.is_approved) {
-      await supabase.auth.signOut()
-      throw new Error('Your account is pending admin approval')
-    }
+    // App component handles !isApproved
+    return
   }
 
   const studentRegister = async (data: {
     fullName: string, studentId: string, program: string,
-    yearSection: string, email: string, password: string
+    yearLevel: string, section: string, email: string, password: string
   }) => {
     const { data: authData, error } = await supabase.auth.signUp({
       email: data.email,
@@ -143,37 +149,38 @@ export function useAuth() {
     })
     if (error) throw new Error(error.message)
 
-    console.log('Student auth created, inserting profile...');
     const { error: profileError } = await supabase.from('profiles').insert({
       id: authData.user?.id,
       student_id: data.studentId,
       full_name: data.fullName,
       program: data.program,
-      year_section: data.yearSection,
+      year_level: data.yearLevel,
+      section: data.section,
       email: data.email,
       role: 'student'
     })
     
     if (profileError) {
       console.error('Student profile insertion failed:', profileError);
-      throw new Error(`Profile creation failed (${profileError.code}): ${profileError.message}. Contact admin.`);
+      throw new Error(`Profile creation failed: ${profileError.message}`);
     }
   }
 
   const adminRegister = async (data: {
     firstName: string, lastName: string, email: string,
-    employeeId: string, department: string, jobTitle: string, password: string
+    department: string, jobTitle: string, password: string
   }) => {
     const { data: authData, error } = await supabase.auth.signUp({
       email: data.email,
       password: data.password,
     })
-    if (error) throw new Error(error.message)
+    if (error) throw error
 
-    console.log('Admin auth created, inserting staff profile...');
+    const employeeId = generateEmployeeId();
+
     const { error: profileError } = await supabase.from('staff_profiles').insert({
       id: authData.user?.id,
-      employee_id: data.employeeId,
+      employee_id: employeeId,
       full_name: `${data.firstName} ${data.lastName}`,
       email: data.email,
       department: data.department,
@@ -184,47 +191,63 @@ export function useAuth() {
 
     if (profileError) {
       console.error('Staff profile insertion failed:', profileError);
-      throw new Error(`Profile creation failed (${profileError.code}): ${profileError.message}. Contact admin.`);
+      throw new Error(`Profile creation failed: ${profileError.message}`);
     }
   }
 
   const updateStudentProfile = async (data: {
-    fullName: string, program: string, yearSection: string, section?: string
+    fullName: string, program: string, yearLevel: string, section: string, email: string
   }) => {
     const { error } = await supabase
       .from('profiles')
       .update({
         full_name: data.fullName,
         program: data.program,
-        year_section: data.yearSection,
+        year_level: data.yearLevel,
+        section: data.section,
+        email: data.email
       })
       .eq('id', user?.id)
 
-    if (error) throw new Error(error.message)
+    if (error) throw error
 
-    setUser(prev => prev ? { ...prev, fullName: data.fullName, program: data.program, yearSection: data.yearSection } : null)
+    setUser(prev => prev ? { 
+      ...prev, 
+      fullName: data.fullName, 
+      program: data.program, 
+      yearLevel: data.yearLevel, 
+      section: data.section,
+      email: data.email
+    } : null)
   }
 
   const updateAdminProfile = async (data: {
-    fullName: string, department: string, jobTitle: string
+    fullName: string, email: string, department: string, jobTitle: string
   }) => {
     const { error } = await supabase
       .from('staff_profiles')
       .update({
         full_name: data.fullName,
+        email: data.email,
         department: data.department,
         job_title: data.jobTitle,
       })
       .eq('id', user?.id)
 
-    if (error) throw new Error(error.message)
+    if (error) throw error
 
-    setUser(prev => prev ? { ...prev, fullName: data.fullName, department: data.department, jobTitle: data.jobTitle } : null)
+    setUser(prev => prev ? { 
+      ...prev, 
+      fullName: data.fullName, 
+      email: data.email, 
+      department: data.department, 
+      jobTitle: data.jobTitle 
+    } : null)
   }
 
   const updatePassword = async (newPassword: string) => {
     const { error } = await supabase.auth.updateUser({ password: newPassword })
-    if (error) throw new Error(error.message)
+    if (error) throw error
   }
 
   const logout = async () => {

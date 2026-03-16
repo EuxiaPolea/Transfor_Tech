@@ -6,7 +6,8 @@ import ForgotPassword from './components/ForgotPassword'
 import SubmitConcernForm from './components/SubmitConcernForm'
 import StatusTracker from './components/StatusTracker'
 import AdminDashboard from './components/AdminDashboard'
-import AccountSettings from './components/AccountSettings'
+import StudentAccountSettings from './components/StudentAccountSettings'
+import AdminAccountSettings from './components/AdminAccountSettings'
 import SuperAdminDashboard from './components/SuperAdminDashboard'
 
 export default function App() {
@@ -65,8 +66,7 @@ export default function App() {
   // ── SUPER ADMIN ────────────────────────────────
   if (user.role === 'superadmin') {
     if (screen === 'settings') return (
-      <AccountSettings
-        role="admin"
+      <AdminAccountSettings
         user={user}
         onBack={() => setScreen('login')}
         onUpdateProfile={updateAdminProfile}
@@ -85,14 +85,60 @@ export default function App() {
   // ── ADMIN ──────────────────────────────────────
   if (user.role === 'admin') {
     if (screen === 'settings') return (
-      <AccountSettings
-        role="admin"
+      <AdminAccountSettings
         user={user}
         onBack={() => setScreen('login')}
         onUpdateProfile={updateAdminProfile}
         onUpdatePassword={updatePassword}
       />
     )
+
+    // Check approval status
+    if (!user.isApproved) {
+      return (
+        <div className="min-h-screen bg-[#0f1117] flex items-center justify-center p-6">
+          <div className="max-w-md w-full bg-[#1a1d27] border border-[#2a2d3a] rounded-2xl p-10 shadow-2xl text-center relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-full h-1 bg-amber-500"></div>
+            
+            <div className="w-24 h-24 bg-amber-500/10 rounded-full flex items-center justify-center mx-auto mb-8 ring-8 ring-amber-500/5">
+              <span className="text-5xl animate-pulse">⏳</span>
+            </div>
+            
+            <h2 className="text-3xl font-bold text-white mb-4">Pending Approval</h2>
+            <div className="mb-8">
+              <p className="text-[#9ca3af] leading-relaxed">
+                Welcome, <span className="text-white font-medium">{user.fullName}</span>.
+              </p>
+              <p className="text-[#9ca3af] leading-relaxed mt-2 text-sm">
+                Your account for the <span className="text-indigo-400 font-bold">{user.department}</span> is currently under review by the System Administrator.
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              <div className="p-5 bg-indigo-500/5 border border-indigo-500/10 rounded-2xl text-sm text-indigo-300 flex items-start gap-3">
+                <span className="text-lg">ℹ️</span>
+                <p className="text-left leading-relaxed">
+                  Dashboard access is restricted until your credentials are verified. You will be able to manage student concerns once approved.
+                </p>
+              </div>
+              
+              <button
+                onClick={logout}
+                className="w-full py-4 px-6 bg-[#0f1117] border border-[#2a2d3a] hover:bg-[#1a1d27] hover:border-indigo-500/50 text-white rounded-2xl font-bold transition-all duration-300 flex items-center justify-center gap-3 group"
+              >
+                <span>Sign out</span>
+                <span className="text-gray-500 group-hover:text-indigo-400 transition-colors">⇥</span>
+              </button>
+            </div>
+
+            <p className="mt-8 text-[11px] text-gray-600 uppercase tracking-widest font-bold">
+              ConcernTrack Security System
+            </p>
+          </div>
+        </div>
+      )
+    }
+
     return (
       <div className="min-h-screen bg-[#0f1117]">
         <nav className="bg-[#1a1d27] border-b border-[#2a2d3a] px-6 py-3 flex items-center justify-between">
@@ -118,10 +164,12 @@ export default function App() {
 
   // ── STUDENT ────────────────────────────────────
   if (screen === 'settings') return (
-    <AccountSettings
-      role="student"
+    <StudentAccountSettings
       user={user}
-      onBack={() => setActiveTab('submit')}
+      onBack={() => {
+        setScreen('login');
+        setActiveTab('submit');
+      }}
       onUpdateProfile={updateStudentProfile}
       onUpdatePassword={updatePassword}
     />
